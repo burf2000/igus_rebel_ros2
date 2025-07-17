@@ -68,7 +68,7 @@ def move_to_xyz():
     pose_goal.pose.position.x = x
     pose_goal.pose.position.y = y
     pose_goal.pose.position.z = z
-    planning_component.set_goal_state(pose_stamped_msg=pose_goal, pose_link="gripper_base")
+    planning_component.set_goal_state(pose_stamped_msg=pose_goal, pose_link="link6")
 
     plan_result = planning_component.plan()
 
@@ -84,7 +84,7 @@ def move_to_xyz():
         st.update()  # ensure transforms are up to date
         # 3. Get the global link transform of your end-effector
         import numpy as np
-        tf_mat = st.get_global_link_transform("gripper_base")  # returns an Eigen transform matrix :contentReference[oaicite:1]{index=1}
+        tf_mat = st.get_global_link_transform("link6")  # returns an Eigen transform matrix :contentReference[oaicite:1]{index=1}
 
         # 4. Extract position & quaternion (assuming tf_mat is np 4×4)
         pos = tf_mat[:3, 3]
