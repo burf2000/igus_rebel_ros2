@@ -5,69 +5,63 @@
 #include <memory>
 #include <thread>
 
-class ArmApiNode : public rclcpp::Node,
-                   public std::enable_shared_from_this<ArmApiNode>
-{
-  using MoveGroup = moveit::planning_interface::MoveGroupInterface;
+class ArmApiNode {
 public:
-  ArmApiNode() : Node("arm_api_node") {}
-
-  void init()
+  ArmApiNode(rclcpp::Node::SharedPtr nh)
+  : nh_(nh),
+    move_group_(std::make_shared<moveit::planning_interface::MoveGroupInterface>(nh_, "igus_rebel_arm"))
   {
-    // explicit ARMAPI class shared_from_this
-    auto self = std::enable_shared_from_this<ArmApiNode>::shared_from_this();
-    move_group = std::make_shared<MoveGroup>(self, "igus_rebel_arm");
+    server_.set_logger([](const httplib::Request& req, const httplib::Response& res) {
+      printf("[HTTP] %s %s -> %d\n", req.method.c_str(), req.path.c_str(), res.status);
+    });
 
-    server.Post("/move", [self, this](const httplib::Request &req, httplib::Response &res) {
+    server_.set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
+      res.set_content("Not found", "text/plain");
+      res.status = 404;
+    });
+
+    server_.Post("/move", [&](const httplib::Request& req, httplib::Response& res) {
+      RCLCPP_INFO(nh_->get_logger(), "[/move] called: %s", req.path.c_str());
       double x = std::stod(req.get_param_value("x"));
       double y = std::stod(req.get_param_value("y"));
       double z = std::stod(req.get_param_value("z"));
+      RCLCPP_INFO(nh_->get_logger(), "Coords: x=%.3f y=%.3f z=%.3f", x, y, z);
+
       geometry_msgs::msg::Pose target;
       target.position.x = x;
       target.position.y = y;
       target.position.z = z;
-
       target.orientation.w = 1.0;
-      move_group->setPoseTarget(target);
+      move_group_->setPoseTarget(target);
 
-      MoveGroup::Plan plan;
-      auto success = move_group->plan(plan);
-      if (success == moveit::core::MoveItErrorCode::SUCCESS) {
-        auto exec_res = move_group->execute(plan.trajectory);
-        res.set_content(
-          exec_res == moveit::core::MoveItErrorCode::SUCCESS ?
-            "Motion executed" : "Execution failed",
-          "text/plain"
-        );
+      moveit::planning_interface::MoveGroupInterface::Plan plan;
+      if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS &&
+          move_group_->execute(plan.trajectory) == moveit::core::MoveItErrorCode::SUCCESS) {
+        res.set_content("Motion executed", "text/plain");
+        RCLCPP_INFO(nh_->get_logger(), "Motion executed");
       } else {
-        res.set_content("Planning failed", "text/plain");
+        res.set_content("Planning/execution failed", "text/plain");
+        RCLCPP_WARN(nh_->get_logger(), "Planning/execution failed");
       }
     });
 
-    // capture the same self shared_ptr
-    std::thread([self]() {
-      RCLCPP_INFO(self->get_logger(), "HTTP server running on port 8080");
-      self->server.listen("0.0.0.0", 8080);
+    std::thread([this]() {
+      RCLCPP_INFO(nh_->get_logger(), "Starting HTTP server on port 8080");
+      server_.listen("0.0.0.0", 8080);
     }).detach();
   }
 
 private:
-  std::shared_ptr<MoveGroup> move_group;
-  httplib::Server server;
+  rclcpp::Node::SharedPtr nh_;
+  std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
+  httplib::Server server_;
 };
 
-inline std::shared_ptr<ArmApiNode> make_arm_api_node()
-{
-  auto node = std::make_shared<ArmApiNode>();
-  node->init();
-  return node;
-}
-
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
-  auto node = make_arm_api_node();
-  rclcpp::spin(node);
+  auto nh = std::make_shared<rclcpp::Node>("arm_api_node");
+  ArmApiNode api(nh);
+  rclcpp::spin(nh);
   rclcpp::shutdown();
   return 0;
 }
