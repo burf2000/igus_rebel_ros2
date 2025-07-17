@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenSSL QUIET)
+find_package(nlohmann_json REQUIRED)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -46,6 +47,7 @@ target_compile_features(arm_api_node PUBLIC cxx_std_17)
 
 ament_target_dependencies(
   arm_api_node
+  nlohmann_json
   rclcpp
   moveit_ros_planning_interface
   Eigen3

@@ -1,5 +1,20 @@
 # igus ReBeL ROS node #
 
+## Latest ##
+
+This is a copy of the Igus Rebel Ros2 repo with an added C Api for testing.  At current I can not get the Python MoveIt2 Api to play ball
+
+Follow the instructions below from orginal repo: e.g run `ros2 launch igus_rebel_moveit_config igus_rebel_simulated.launch.py`
+
+Then run: `ros2 launch igus_rebel_c_api arm_api.launch.py` to the launch api
+
+To test in terminal: 
+`curl -X POST http://localhost:8080/move      -H "Content-Type: application/json"      -d '{
+       "posX":0.5, "posY":0.02, "posZ":0.4,
+       "rotX":1, "rotY":0, "rotZ":0, "rotW":1
+     }'`
+
+
 ## Summary ##
 
 * Connects to an igus ReBeL over an Ethernet connection
