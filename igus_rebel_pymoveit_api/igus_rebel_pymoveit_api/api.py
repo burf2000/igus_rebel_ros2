@@ -17,19 +17,25 @@ def move():
     if None in pos or None in quat:
         return jsonify(error="Missing fields"), 400
 
+
     # Plan to the requested pose
     traj = moveit2.plan(position=pos, quat_xyzw=quat)
     if traj is None:
+        app.logger.error("Planning failed or trajectory invalid")
         return jsonify(status="planning_failed"), 500
 
     # Execute the planned trajectory
-    exec_ok = moveit2.execute(traj)
+    moveit2.execute(traj)
+    exec_ok = moveit2.wait_until_executed()
+
     if not exec_ok:
+        app.logger.error("Execution returned failure {exec_ok}")
         return jsonify(status="execution_failed"), 500
 
     # Compute FK to get current end-effector pose
     ee_pose_stamped = moveit2.compute_fk()
     if ee_pose_stamped is None:
+        app.logger.error("FK service returned no result")
         return jsonify(status="no_fk_response"), 500
 
     p = ee_pose_stamped.pose.position
