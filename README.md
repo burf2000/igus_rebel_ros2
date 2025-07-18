@@ -15,6 +15,11 @@ To test in terminal:
      }'`
 
 
+To test python
+curl -X POST http://localhost:5000/move_to_xyz   -H "Content-Type: application/json"   -d '{"x":0.5,"y":0.02,"z":0.4,"roll":1,"pitch":0,"yaw":0}'
+
+
+
 ## Summary ##
 
 * Connects to an igus ReBeL over an Ethernet connection
